@@ -461,7 +461,7 @@ class OWAutoGluonTimeSeries(OWWidget):
                 # Настройка конфигурации
                 config = {}
                 if self.include_holidays:
-                    config['holiday_lookups'] = ["US"]  # Можно расширить списком стран
+                    config['holiday_lookups'] = ["RU"]  # праздничные дни
                 
                 # Получение метрики (убеждаемся, что это строка)
                 metric = self.selected_metric
@@ -582,16 +582,41 @@ class OWAutoGluonTimeSeries(OWWidget):
                     if code == model_freq:
                         freq_name = f"{label} ({code})"
                         break
+                
+                # Получаем лучшую модель, если лидерборд доступен
+                best_model_name = "Неизвестно"
+                best_model_score = "Н/Д"
+                
+                try:
+                    if 'lb' in locals() and lb is not None and not lb.empty:
+                        best_model_name = lb.iloc[0]['model']
+                        best_model_score = f"{lb.iloc[0]['score_val']:.4f}"
                         
+                        # Логируем информацию о лучших моделях
+                        self.log(f"Лучшая модель: {best_model_name}, Оценка: {best_model_score}")
+                        
+                        # Показываем топ-3 модели если их столько есть
+                        if len(lb) > 1:
+                            self.log("Топ модели:")
+                            for i in range(min(3, len(lb))):
+                                model = lb.iloc[i]['model']
+                                score = lb.iloc[i]['score_val']
+                                self.log(f"  {i+1}. {model}: {score:.4f}")
+                except Exception as e:
+                    self.log(f"Не удалось получить информацию о лучшей модели: {str(e)}")
+                
+                # Создаем расширенную информацию о модели
                 model_info = pd.DataFrame({
                     'Parameter': ['Версия', 'Цель', 'Длина', 'Метрика', 'Пресет', 
-                                'Время', 'Праздники', 'Даты', 'Частота'],
+                                'Время', 'Праздники', 'Даты', 'Частота', 'Лучшая модель', 'Оценка модели'],
                     'Value': ['1.2.0', self.target_column, str(self.prediction_length),
                               metric, self.selected_preset, 
                               f"{self.time_limit} сек", 
                               "Включены" if self.include_holidays else "Отключены",
                               "Текущие" if self.use_current_date else "Исходные",
-                              freq_name]
+                              freq_name,
+                              best_model_name,
+                              best_model_score]
                 })
                 self.Outputs.model_info.send(self.df_to_table(model_info))
                 
