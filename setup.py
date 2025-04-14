@@ -1,18 +1,34 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='autogluon-timeseries-widget',
-    version='0.1',
+    name="orange3-autogluon-timeseries",
+    version="1.0.0",
+    description="AutoGluon Time Series forecasting widget for Orange3",
+    author="Иван Кордяк",
+    author_email="KordyakIM@gmail.com",
+    url="https://github.com/KordyakIM/autogluon-timeseries-widget",
+    license="MIT",
     packages=find_packages(),
+    package_data={
+        "orangecontrib.autogluon_timeseries.widgets": ["*.py", "*.png"],
+    },
+    entry_points={
+        "orange.widgets": (
+            "AutoGluonTimeSeries = orangecontrib.autogluon_timeseries.widgets"
+        ),
+        "orange.canvas.help": (
+            "html-index = orangecontrib.autogluon_timeseries.widgets:help"
+        )
+    },
     install_requires=[
-        'pandas==1.5.3',
-        'numpy==1.22.4',
-        'orange3==3.38.0',
-        'autogluon.timeseries==1.2.0',
-        'PyQt5>=5.15'
+        "Orange3>=3.38.1",
+        "autogluon.timeseries==1.2",
+        "pandas==2.2.3",
+        "numpy<1.25"
     ],
-    include_package_data=True,
-    description='AutoGluon TimeSeries Widget for Orange3',
-    author='Иван',
-    license='MIT',
+    classifiers=[
+        "Framework :: Orange3",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.9",
+    ]
 )
