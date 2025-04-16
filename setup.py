@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="orange3-autogluon-timeseries",
-    version="1.0.2",
+    version="1.0.3",
     description="AutoGluon Time Series forecasting widget for Orange3",
     long_description=long_description,
     long_description_content_type="text/markdown",  # <--- это важно
