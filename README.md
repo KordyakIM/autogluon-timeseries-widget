@@ -15,15 +15,22 @@
 
 - Orange3 >= 3.38
 - AutoGluon >= 1.2.0
-- pandas >= 1.5
+- pandas == 2.2.3
 - Python 3.9+
+- numpy >= 1.25
+- PyQt5 >= 5.15
+- matplotlib >= 3.5
 
 ## 🚀 Установка
 
 ```bash
-git clone https://github.com/username/autogluon-timeseries-widget.git
+git clone https://github.com/KordyakIM/autogluon-timeseries-widget.git
 cd autogluon-timeseries-widget
-pip install -r requirements.txt
+pip install .
+```
+or
+```bash
+pip install orange3-autogluon-timeseries
 ```
 
 ## 📦 Добавление в Orange
