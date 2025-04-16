@@ -1,6 +1,0 @@
-orange3==3.38.1
-autogluon.timeseries==1.2.0
-pandas==2.2.3
-numpy==1.25
-PyQt5>=5.15
-matplotlib>=3.5
