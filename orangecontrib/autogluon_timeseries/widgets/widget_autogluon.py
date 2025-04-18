@@ -39,6 +39,7 @@ class OWAutoGluonTimeSeries(OWWidget):
     use_current_date = settings.Setting(True)  # Настройка для использования текущей даты
     frequency = settings.Setting("D")  # Частота для прогноза (по умолчанию дни)
     auto_frequency = settings.Setting(True)  # Автоопределение частоты
+    selected_model = settings.Setting("auto") # выбор моделей
 
     # Метрики
     METRICS = ["MAE", "MAPE", "MSE", "RMSE", "WQL"]
@@ -102,9 +103,15 @@ class OWAutoGluonTimeSeries(OWWidget):
 
         # Настройки столбцов
         col_box = gui.widgetBox(self.controlArea, "Столбцы")
-        gui.lineEdit(col_box, self, "target_column", label="Целевая:")
-        gui.lineEdit(col_box, self, "id_column", label="ID ряда:")
-        gui.lineEdit(col_box, self, "timestamp_column", label="Время:")
+        # Хранение всех колонок для выпадающего списка
+        self.all_columns = []
+        
+        # Целевая переменная
+        self.target_combo = gui.comboBox(col_box, self, "target_column", label="Целевая:", items=[])
+        # ID ряда
+        self.id_combo = gui.comboBox(col_box, self, "id_column", label="ID ряда:", items=[])
+        # Временная метка
+        self.timestamp_combo = gui.comboBox(col_box, self, "timestamp_column", label="Время:", items=[])
         
         # Настройки частоты
         freq_box = gui.widgetBox(self.controlArea, "Частота временного ряда")
@@ -142,7 +149,14 @@ class OWAutoGluonTimeSeries(OWWidget):
         self.date_checkbox.setChecked(self.use_current_date)
         self.date_checkbox.stateChanged.connect(self.on_date_option_changed)
         extra_box.layout().addWidget(self.date_checkbox)
-
+        
+        # Добавляем выбор моделей
+        self.model_selector = gui.comboBox(
+            extra_box, self, "selected_model",
+            items=["auto", "DirectTabular", "ETS", "DeepAR", "MLP", "TemporalFusionTransformer", "TiDE"],
+            label="Модель:",
+            sendSelectedValue=True  # ⬅️ вот это ключевое!
+        )
         # Кнопка и логи
         self.run_button = gui.button(self.controlArea, self, "Запустить", callback=self.run_model)
         
@@ -273,6 +287,35 @@ class OWAutoGluonTimeSeries(OWWidget):
                 
             self.log("Обработка входных данных...")
             self.data = self.prepare_data(dataset)
+
+            # Обновление выпадающих списков колонок
+            self.all_columns = list(self.data.columns)
+            
+            # Обновляем comboBox'ы
+            self.target_combo.clear()
+            self.id_combo.clear()
+            self.timestamp_combo.clear()
+            
+            self.target_combo.addItems(self.all_columns)
+            self.id_combo.addItems(self.all_columns)
+            self.timestamp_combo.addItems(self.all_columns)
+            
+            # Установка выбранных значений
+            if self.target_column in self.all_columns:
+                self.target_combo.setCurrentText(self.target_column)
+            else:
+                self.target_column = self.all_columns[0]
+            
+            if self.id_column in self.all_columns:
+                self.id_combo.setCurrentText(self.id_column)
+            else:
+                self.id_column = self.all_columns[0]
+            
+            if self.timestamp_column in self.all_columns:
+                self.timestamp_combo.setCurrentText(self.timestamp_column)
+            else:
+                self.timestamp_column = self.all_columns[0]
+            
             required = {self.timestamp_column, self.target_column, self.id_column}
             if not required.issubset(set(self.data.columns)):
                 missing = required - set(self.data.columns)
@@ -456,6 +499,11 @@ class OWAutoGluonTimeSeries(OWWidget):
             # Обучение
             with tempfile.TemporaryDirectory() as temp_dir:
                 model_path = Path(temp_dir)
+
+                # 🛠️ Создаём папку для логов, иначе будет FileNotFoundError
+                log_dir = model_path / "logs"
+                log_dir.mkdir(parents=True, exist_ok=True)
+
                 self.log(f"Начало обучения модели, время: {self.time_limit} сек...")
                 
                 # Настройка конфигурации
@@ -468,7 +516,10 @@ class OWAutoGluonTimeSeries(OWWidget):
                 if isinstance(metric, int) and 0 <= metric < len(self.METRICS):
                     metric = self.METRICS[metric]
                 self.log(f"Используемая метрика: {metric}")
-                
+                # проверка модели
+                models = None
+                if self.selected_model != "auto":
+                    models = [self.selected_model]
                 try:
                     # Создание предиктора
                     predictor = TimeSeriesPredictor(
@@ -479,12 +530,32 @@ class OWAutoGluonTimeSeries(OWWidget):
                     )
                     
                     # Обучение
-                    predictor.fit(
-                        ts_data, 
-                        presets=self.selected_preset, 
-                        time_limit=self.time_limit,
+                    fit_args = {
+                        "presets": self.selected_preset,
+                        "time_limit": self.time_limit,
                         **config
+                    }
+                    
+                    # Если выбрана конкретная модель — задаём через hyperparameters
+                    if self.selected_model != "auto":
+                        fit_args["hyperparameters"] = {self.selected_model: {}}
+                        
+                    # сбрасываем старый логгер, чтобы не пытался писать в удалённую папку
+                    import logging
+
+                    logger = logging.getLogger("autogluon")
+                    for handler in logger.handlers[:]:
+                        try:
+                            handler.close()
+                        except:
+                            pass
+                        logger.removeHandler(handler)
+                    
+                    predictor.fit(
+                        ts_data,
+                        **fit_args
                     )
+                    
                 except ValueError as ve:
                     if "must have >=" in str(ve):
                         # Обрабатываем ошибку длины данных
@@ -619,6 +690,10 @@ class OWAutoGluonTimeSeries(OWWidget):
                               best_model_score]
                 })
                 self.Outputs.model_info.send(self.df_to_table(model_info))
+                
+                # Закрываем логгеры, чтобы не было WinError 32
+                import logging
+                logging.shutdown()
                 
             self.log("=== УСПЕШНО ===")
             
