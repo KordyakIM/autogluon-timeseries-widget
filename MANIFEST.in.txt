@@ -1,0 +1,8 @@
+include LICENSE
+include README.md
+include requirements.txt
+include setup.py
+recursive-include orangecontrib *.py
+recursive-include orangecontrib/autogluon_timeseries *.py
+recursive-include orangecontrib/autogluon_timeseries/widgets *.py
+recursive-include orangecontrib/autogluon_timeseries/widgets/icons *.png
