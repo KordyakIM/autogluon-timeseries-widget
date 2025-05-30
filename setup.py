@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="orange3-autogluon-timeseries",
-    version="1.1.7",
+    version="1.3.0",
     description="AutoGluon Time Series forecasting widget for Orange3",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -32,7 +32,8 @@ setup(
         "pandas>=2.2,<2.3",
         "numpy>=1.25",
         "PyQt5>=5.15",
-        "matplotlib>=3.5"
+        "matplotlib>=3.5",
+        "holidays>=0.20"
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
